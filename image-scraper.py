@@ -167,7 +167,7 @@ def fetch_images_from_keyword(
             return
 
 
-def backup_history(*args, verbosity=0):
+def backup_history(signum=None, frame=None, verbosity=0):
     download_history = open(
         os.path.join(output_dir, 'download_history.pickle'), 'wb'
     )
@@ -179,7 +179,7 @@ def backup_history(*args, verbosity=0):
     download_history.close()
     if verbosity > 0:
         logging.info('Dumped download history')
-    if args:
+    if signum is not None:
         exit(0)
 
 
@@ -292,6 +292,6 @@ if __name__ == "__main__":
                 args.limit,
                 args.file_prefix
             )
-            backup_history(args.verbosity)
+            backup_history(verbosity=args.verbosity)
             time.sleep(10)
         inputFile.close()
