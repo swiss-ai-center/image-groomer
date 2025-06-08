@@ -113,7 +113,7 @@ the verbosity level of the application (no flags for minial logs, `-v` few logs,
 ## Image Scraper
 
 This script is an image bulk downloader. It downloads large numbers of
-images from urls obtained with as search engine (in this case Bing Image
+images from urls obtained with a search engine (in this case Bing Image
 Search) based on a search keyword or a list of keywords. This script
 automates the process of downloading and organizing large sets of images
 for composing datasets, with deduplication and multi-threading support.
@@ -149,3 +149,6 @@ Example usage:
 Note: the number of images could be accidentally higher or lower than the limit due to a weak
 handling of the counters in threads and the fact that downloads or files could be corrupted.
 This needs improvements in the code but it does the trick for bulk download.
+
+Note: This script is designed to work with Bing Image Search. If you want to use another search
+engine, you will need to modify the `get_image_urls` function accordingly.
