@@ -17,7 +17,6 @@ import logging
 
 # config
 output_dir = './download'  # default output dir
-adult_filter = True        # adult filter on by default
 socket.setdefaulttimeout(2)
 ssl._create_default_https_context = ssl._create_stdlib_context
 
@@ -242,15 +241,8 @@ if __name__ == "__main__":
         download_history.close()
     except (OSError, IOError):
         tried_urls = []
-    # If the adult filter is on, we will use 'off' to disable it in the URL
-    if adult_filter:
-        adlt = ''
-    else:
-        adlt = 'off'
-    if args.adult_filter:
-        adlt = ''
-    else:
-        adlt = 'off'
+    # Determine the adult filter parameter for the query
+    adlt = '' if args.adult_filter else 'off'
     # Logging the initial configuration
     if args.verbosity > 0:
         logging.info("Starting scccrrraaapping...")
