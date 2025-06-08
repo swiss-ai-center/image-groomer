@@ -590,7 +590,7 @@ if __name__ == "__main__":
     parser.add_argument('-wi', '--width', type=int, default=-1,
                         help='max width')
     parser.add_argument('-he', '--height', type=int, default=-1,
-                        help='max width')
+                        help='max height')
     parser.add_argument('-rs', '--removesim', action='store_true',
                         default=False, help='remove similar files')
     parser.add_argument('-i', '--interactive', action='store_true',
