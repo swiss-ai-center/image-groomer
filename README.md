@@ -66,8 +66,9 @@ the verbosity level of the application (no flags for minial logs, `-v` few logs,
   or use a recomputed perceptual hash name.
   
 - **make_sets**: This mode takes source directory containing categories of images
-  and split it into train, validation and test sets. Default split sizes are,
-  respectively, 70%, 20% and 10%. Example source directory:
+  and split it into train, validation and test sets. The split preserves the
+  class balance. Default split sizes are, respectively, 80%, 10% and 10%.
+  Example source directory:
 
   ```text
   unsplit_data_dir
