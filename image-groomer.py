@@ -6,7 +6,6 @@ import json
 import glob
 import logging
 import random
-import numpy as np
 import tkinter as tk
 from tkinter import messagebox
 from PIL import ImageTk, Image
@@ -489,7 +488,7 @@ def make_train_validation_test_sets(filelist, outputdir: str,
                                     nperclass: int = -1,
                                     seed: int = -1, verbosity: int = 0):
     # check that split values are correct
-    if np.abs(1.0 - (train_size + val_size + test_size)) > 0.001:
+    if abs(1.0 - (train_size + val_size + test_size)) > 0.001:
         logging.error("split sizes not correct, should sum up to 1.0")
         exit(1)
     # check that the outputdir is not existing
