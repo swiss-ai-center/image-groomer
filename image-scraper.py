@@ -39,6 +39,8 @@ def download(
     output_dir: str,
     output_file_prefix: str = None,
     limit: int = 100,
+    keep_original_filename: bool = False,
+    allow_gif: bool = False,
     verbosity: int = 0
 ):
     global in_progress
@@ -53,7 +55,16 @@ def download(
     filename = posixpath.basename(path).split('?')[0]
     name, ext = os.path.splitext(filename)
     name = name[:36].strip()
-    filename = output_file_prefix + '-' + name + ext
+    ext = ext.lower()
+    allowed_exts = ['.jpeg', '.jpg', '.png']
+    if allow_gif:
+        allowed_exts.append('.gif')
+    if ext not in allowed_exts:
+        if verbosity > 0:
+            logging.warning('Skipping file with invalid extension: %s', ext)
+        pool_sema.release()
+        in_progress -= 1
+        return
 
     try:
         with downloaded_images_lock:
@@ -66,10 +77,20 @@ def download(
             Image.open(io.BytesIO(image)).verify()
         except Exception:
             if verbosity > 0:
-                logging.warning('Invalid image format for : %s', filename)
+                logging.warning('Invalid image format for : %s', url)
             return
 
         md5_key = hashlib.md5(image).hexdigest()
+        if not keep_original_filename:
+            name = md5_key[:8]
+        # if prefix not given, don't put a hyphen
+        if output_file_prefix is None:
+            filename = "%s%s" % (name, ext)
+        else:
+            filename = "%s-%s%s" % (output_file_prefix, name, ext)
+        if verbosity > 0:
+            logging.debug('Target filename: %s', filename)
+
         if md5_key in image_md5s:
             if verbosity > 0:
                 logging.info('Image is duplicate of %s, not saving %s',
@@ -111,20 +132,23 @@ def download(
 
 
 def fetch_images_from_keyword(
-        pool_sema: threading.Semaphore,
-        keyword: str,
-        output_dir: str,
-        filters: str,
-        limit: int,
-        output_file_prefix: str = None,
-        verbosity: int = 0):
+    pool_sema: threading.Semaphore,
+    keyword: str,
+    output_dir: str,
+    filters: str,
+    limit: int,
+    output_file_prefix: str = None,
+    keep_original_filename: bool = False,
+    allow_gif: bool = False,
+    verbosity: int = 0
+):
     if verbosity > 0:
         logging.info('Fetching images for keyword: "%s"', keyword)
     global downloaded_images
     last = ''
     current = 0
     while True:
-        time.sleep(0.1)
+        time.sleep(0.2)
 
         if in_progress > 10:
             continue
@@ -148,6 +172,7 @@ def fetch_images_from_keyword(
             if links[-1] == last:
                 return
             for index, link in enumerate(links):
+                time.sleep(0.2)
                 with downloaded_images_lock:
                     if downloaded_images >= limit:
                         if verbosity > 0:
@@ -156,7 +181,7 @@ def fetch_images_from_keyword(
                 t = threading.Thread(
                     target=download,
                     args=(pool_sema, link, output_dir, output_file_prefix,
-                          limit, verbosity)
+                          limit, keep_original_filename, allow_gif, verbosity)
                 )
                 t.start()
                 current += 1
@@ -199,7 +224,7 @@ if __name__ == "__main__":
                         help='File containing search strings line by line')
     parser.add_argument('-o', '--output', default=output_dir,
                         help='Output directory')
-    parser.add_argument('-p', '--file-prefix', default=time.strftime('%Y%m%d'),
+    parser.add_argument('-p', '--file-prefix',
                         help='Prefix for downloaded files')
     parser.add_argument('--adult-filter', default=True,
                         action=argparse.BooleanOptionalAction,
@@ -211,6 +236,11 @@ if __name__ == "__main__":
                         help='Limit the number of images to download')
     parser.add_argument('--threads', type=int, default=20,
                         help='Number of threads')
+    parser.add_argument('--keep-filename', action='store_true', default=False,
+                        help='Keep original filename (default is to use md5 '
+                        'hash of image content)')
+    parser.add_argument('--allow-gif', action='store_true', default=False,
+                        help='Allow saving images with .gif extension')
     args = parser.parse_args()
     # Set up logging
     if args.verbosity > 1:
@@ -251,9 +281,14 @@ if __name__ == "__main__":
         logging.info("File prefix: %s", args.file_prefix)
         logging.info("Using filters: %s", args.filters)
         logging.info("Limiting to %d images", args.limit)
+        logging.info("Verbosity level is %d", args.verbosity)
+        logging.info("Keeping original filenames: %s", args.keep_filename)
+        logging.info("Using %d threads", args.threads)
     # Set up the semaphore for limiting the number of threads
+    if args.limit < args.threads:
+        args.threads = args.limit
     pool_sema = threading.BoundedSemaphore(args.threads)
-    if args.search_string:
+    if args.search_string:   # only one keyword to search
         fetch_images_from_keyword(
             pool_sema,
             args.search_string,
@@ -261,9 +296,11 @@ if __name__ == "__main__":
             args.filters,
             args.limit,
             args.file_prefix,
+            args.keep_filename,
+            args.allow_gif,
             args.verbosity
         )
-    elif args.search_file:
+    elif args.search_file:  # read keywords from file
         try:
             inputFile = open(args.search_file)
         except (OSError, IOError):
@@ -282,7 +319,10 @@ if __name__ == "__main__":
                 output_sub_dir,
                 args.filters,
                 args.limit,
-                args.file_prefix
+                args.file_prefix,
+                args.keep_filename,
+                args.allow_gif,
+                args.verbosity
             )
             backup_history(verbosity=args.verbosity)
             time.sleep(10)
