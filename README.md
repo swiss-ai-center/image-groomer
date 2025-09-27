@@ -121,16 +121,13 @@ for composing datasets, with deduplication and multi-threading support.
 
 ### How it works
 
-1. Command-line Arguments. You can specify a search string (-s), a file with search strings (-f), output directory (-o), file prefix (-p), number of threads, adult filter settings, filters, and a download limit.
+1. Command-line Arguments. You can specify a search string (-s), a file with search strings inside (-f), an output directory (-o), a file prefix (-p), the number of threads, adult filter settings, filters, and a download limit.
 
-2. Image Search. For each keyword, it queries an image search engine (in this case
-Bing Images), parses the result page for image URLs, and downloads them.
+2. Image Search. For each keyword, it queries an image search engine (in this case Bing Images), parses the result page for image URLs, and downloads them.
 
-3. Downloading and validation. Downloads are done in parallel using threads (default 20). Each image is checked for validity and deduplicated using MD5 hashes.
-Images are saved with a prefix and a sanitized filename.
+3. Downloading and validation. Downloads are done in parallel using threads (default 20). Each image is checked for validity and deduplicated using MD5 hashes. Images are saved with a prefix and a sanitized filename with optional prefix.
 
-4. History. Keeps track of downloaded URLs and image hashes to avoid duplicates.
-Saves this history to a pickle file, and reloads it on restart.
+4. History. Keeps track of downloaded URLs and image hashes to avoid duplicates. Saves this history to a pickle file, and reloads it on restart.
 
 5. Graceful Exit. On Ctrl+C, it saves the download history before exiting.
 
@@ -140,16 +137,34 @@ Saves this history to a pickle file, and reloads it on restart.
 - Can apply Bing search filters (e.g., image size).
 - Handles corrupted images and duplicate downloads.
 - Can process multiple keywords from a file, saving each set in a separate subdirectory.
+- gif files are blocked by default, use `--allow-gif` to allow them.
+- Multi-threaded downloading for speed.
 
-Example usage:
+### Example usage
 
 `python image-scraper.py -v -s "cats" --limit 100 --filters "+filterui:imagesize-medium"`
 
 `python image-scraper.py -v -s "camel" --no-adult-filter -l 150 --filters "+filterui:imagesize-medium" -p "camel-image"`
 
-Note: the number of images could be accidentally higher or lower than the limit due to a weak
-handling of the counters in threads and the fact that downloads or files could be corrupted.
-This needs improvements in the code but it does the trick for bulk download.
+`python image-scraper.py -v -s "cat" --limit 100 -o data_raw/cat --allow-gif -p "cat-2025-09"`
 
-Note: This script is designed to work with Bing Image Search. If you want to use another search
-engine, you will need to modify the `get_image_urls` function accordingly.
+Note: the number of images could be accidentally higher or lower than the limit due to a weak handling of the counters in threads and the fact that downloads or files could be corrupted. This needs improvements in the code but it does the trick for bulk download.
+
+Note: This script is designed to work with Bing Image Search. If you want to use another search engine, you will need to modify the `get_image_urls` function accordingly.
+
+### Command-line Arguments
+
+Use `python image-scraper.py --help` for help. The flag `-v` allows you to control the verbosity level of the application (no flags for minial logs, `-v` few logs, `-vv` more logs, etc.).
+
+The main arguments are:
+
+- `-s`, `--search`: Search string to query images for.
+- `-f`, `--search-file`: File containing search strings line by line.
+- `-o`, `--output`: Output directory.
+- `-p`, `--file-prefix`: Prefix for downloaded files. If not provided, no prefix is used.
+- `--no-adult-filter`: Disable adult content filtering (enabled by default).
+- `--filters`: Bing search filters (e.g., `+filterui:imagesize-medium`).
+- `--limit`: Maximum number of images to download per search string (default 100).
+- `--threads`: Number of parallel download threads (default 20).
+- `--keep-filename`: Keep original filename (default is to use md5 hash of image content).
+- `--allow-gif`: Allow saving images with .gif extension (blocked by default).
