@@ -451,8 +451,13 @@ def make_uniform(filelist, outputdir: str, width: int = -1, height: int = -1,
         else:
             logging.error('namestrategy argument to make_uniform() is invalid')
             exit(1)
-        target_file_name = outputdir + os.sep + image.category + '_' \
-            + image.subcategory + os.sep + target_name + '.jpg'
+        # if no subcategory, we just use category
+        if image.subcategory is None:
+            target_file_name = outputdir + os.sep + image.category + os.sep \
+                + target_name + '.jpg'
+        else:
+            target_file_name = outputdir + os.sep + image.category + '_' \
+                + image.subcategory + os.sep + target_name + '.jpg'
         if verbosity > 1:
             logging.info('target file is {}'.format(target_file_name))
         im = Image.open(image.filename)
