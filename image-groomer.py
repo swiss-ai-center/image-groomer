@@ -78,7 +78,7 @@ class ImageMeta():
             logging.info("orientation = {}".format(self.orientation))
             logging.info("mode        = {}".format(self.mode))
         del im
-    
+
     def compute_hash(self):
         '''
         Compute a cryptographic hash for exact match comparisons.
@@ -461,7 +461,7 @@ def make_uniform(filelist, outputdir: str, width: int = -1, height: int = -1,
         if verbosity > 1:
             logging.info('target file is {}'.format(target_file_name))
         im = Image.open(image.filename)
-        # check if there is a palette, if yes first convert to RGBA to avoid 
+        # check if there is a palette, if yes first convert to RGBA to avoid
         # warnings from PIL in case of "dirty palettes"
         if image.mode == 'P':
             im = im.convert('RGBA')
