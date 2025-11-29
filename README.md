@@ -168,3 +168,274 @@ The main arguments are:
 - `--threads`: Number of parallel download threads (default 20).
 - `--keep-filename`: Keep original filename (default is to use md5 hash of image content).
 - `--allow-gif`: Allow saving images with .gif extension (blocked by default).
+
+## Google Images Scraper
+
+A more recent bulk downloader that uses Selenium with headless Chrome to scrape
+Google Images search results. This provides an alternative to Bing when you need
+different image sources or better search quality for specific queries.
+
+### How Google scraper works
+
+1. Uses Selenium with headless Chrome to navigate Google Images search results
+2. Scrolls and clicks thumbnails to collect full-size image URLs
+3. Downloads images in parallel with the same deduplication and validation as
+   the Bing scraper
+4. Saves download history to avoid re-downloading images across sessions
+
+### Google scraper requirements
+
+This script requires additional dependencies:
+
+```sh
+pip install selenium
+# On macOS with Homebrew:
+brew install chromedriver
+# Or download chromedriver matching your Chrome version from:
+# https://chromedriver.chromium.org/downloads
+```
+
+### Google scraper usage
+
+```sh
+# Basic download
+python image-scraper-google.py -s "golden retriever" --limit 100 -o data_raw/dog
+
+# Multiple keywords from file
+python image-scraper-google.py -f keywords.txt --limit 200 --threads 10
+
+# With file prefix and verbose output
+python image-scraper-google.py -s "siamese cat" -p cat -o data_raw/cat --limit 150 -v
+
+# Disable safe search
+python image-scraper-google.py -s "abstract art" --no-safe-search --limit 50
+```
+
+### Google scraper arguments
+
+- `-s`, `--search`: Search keyword/query.
+- `-f`, `--search-file`: File containing search queries line by line.
+- `-o`, `--output`: Output directory (default: ./download).
+- `-p`, `--file-prefix`: Prefix for downloaded filenames.
+- `--limit`: Maximum number of images to download per query (default 100).
+- `--threads`: Number of parallel download threads (default 20).
+- `--no-safe-search`: Disable safe search filtering.
+- `--keep-filename`: Keep original filename instead of using MD5 hash.
+- `--allow-gif`: Allow downloading GIF images (blocked by default).
+- `-v`, `--verbosity`: Increase verbosity (-v, -vv).
+
+### Notes
+
+- Google may rate-limit or block requests if you make too many searches too
+  quickly; use reasonable limits and consider adding delays between queries
+- Requires `chromedriver` to be installed and accessible in your PATH
+- The scraper uses headless Chrome, so it works without opening browser windows
+- Download history is saved to `google_download_history.pkl` to prevent
+  re-downloading images across sessions
+- Images are deduplicated using MD5 hashes, just like the Bing scraper
+
+## Dataset Downloaders (Open Images v7 & COCO)
+
+Two scripts are provided to fetch curated, per-class image sets from popular
+computer vision datasets via the FiftyOne dataset zoo. Each script creates one
+subfolder per requested category inside a chosen output directory.
+
+### Open Images v7 (`image-download-oidv7.py`)
+
+Downloads images that contain at least one instance of any of the requested
+classes using `only_matching=True` to minimize data transfer. The script then
+applies an additional check so that images saved for a given class do not also
+contain other requested classes.
+
+Example commands:
+
+```sh
+# Download zebra and elephant images (no image will be saved twice with both)
+python image-download-oidv7.py -c Zebra Elephant -o data_raw --per-class-limit 300
+
+# Use a file listing classes (one per line) and all splits
+python image-download-oidv7.py -f classes.txt -o data_raw --split all --per-class-limit 200
+
+# Increase verbosity
+python image-download-oidv7.py -c Cat Dog -o data_raw -v --per-class-limit 100
+```
+
+`classes.txt` example:
+
+```text
+Zebra
+Elephant
+Cat
+Dog
+# lines starting with # are ignored
+```
+
+Notes:
+
+- Open Images class names are typically Title Case (e.g. `Cat`, `Dog`, `Zebra`).
+- Images containing multiple requested classes are skipped for exclusivity.
+- If an image has other (non-requested) labels, those may not be visible
+  because we load only matching labels; this keeps downloads smaller but means
+  exclusivity only covers requested categories.
+
+### COCO (`image-download-coco.py`)
+
+Downloads images from COCO 2014 or 2017 and saves them per requested class.
+Unlike Open Images, this script loads all labels for matching images
+(`only_matching=False`) so it can accurately exclude images that contain other
+requested classes. An optional flag can enforce even stricter filtering.
+
+Key options:
+
+- `--dataset {coco-2017,coco-2014}`: Choose dataset version.
+- `--split {train,validation,test,all}`: Fetch from one or both labeled splits.
+- `--exclude-any-non-target`: Keep only images whose labels are exclusively the
+  target class (no other objects at all).
+- `--case-insensitive`: Match category names ignoring case (default enabled).
+
+Example commands:
+
+```sh
+# Basic cat & dog download (skip images containing both)
+python image-download-coco.py -c cat dog -o data_raw --per-class-limit 250
+
+# Stricter: keep only pure zebra images (no other objects)
+python image-download-coco.py -c zebra -o data_raw --exclude-any-non-target --per-class-limit 50
+
+# Multiple classes from file, both train & validation
+python image-download-coco.py -f classes.txt --split all -o data_raw --per-class-limit 100
+```
+
+Notes:
+
+- COCO category names are lowercase (e.g. `cat`, `dog`, `zebra`). The script
+  normalizes labels when `--case-insensitive` is active.
+- The COCO `test` split has no annotations; filtering will yield 0 samples.
+- Exclusivity logic: by default, images containing other requested classes are
+  skipped; with `--exclude-any-non-target`, images containing any other object
+  at all are skipped.
+
+### General Tips
+
+- Disk space: Large per-class limits across many categories can consume tens of
+  gigabytes quickly; start with small limits.
+- Reproducibility: Keep the class file under version control for dataset
+  regeneration.
+- Duplicates: Downstream, you can run the groomer duplicate detection modes to
+  remove accidental near-duplicates across sources.
+- Virtual environment: Ensure `fiftyone` and its dependencies are installed in
+  the active environment before running either downloader.
+
+## YOLO Image Verifier
+
+A verification tool that uses YOLOv8 object detection to validate that images
+contain only objects from a specified category. This is useful for cleaning
+datasets by identifying images that contain the wrong objects or multiple
+categories.
+
+### YOLO verification process
+
+1. Uses YOLOv8 to detect objects in each image
+2. Verifies that only the target category is present with sufficient confidence
+3. Optionally moves images that fail verification to an `_UNVERIFIED` subfolder
+4. Provides detailed reports on what was detected in each image
+
+### Requirements
+
+This tool requires the Ultralytics library:
+
+```sh
+pip install ultralytics
+```
+
+The first run will automatically download the YOLO model weights.
+
+### Usage examples
+
+```sh
+# Verify a single image for dogs
+python verify-image-yolo.py -k dog -i image.jpg
+
+# Verify multiple images
+python verify-image-yolo.py -k cat -i img1.jpg img2.jpg img3.jpg
+
+# Verify all images in a directory
+python verify-image-yolo.py -k horse -d data_raw/horse
+
+# Move unverified images to _UNVERIFIED subfolder
+python verify-image-yolo.py -k dog -d data_raw/dog --move-unverified
+
+# Dry run to see what would be moved without moving files
+python verify-image-yolo.py -k cat -d data_raw/cat --move-unverified --dry-run
+
+# Use a different YOLO model with custom confidence threshold
+python verify-image-yolo.py -k elephant -d data_raw/elephant \
+  --model yolov8m.pt --confidence 0.6 -v
+
+# Verify images listed in a text file
+python verify-image-yolo.py -k zebra -f image_list.txt --move-unverified
+
+# Show detailed bounding box information with -vv
+python verify-image-yolo.py -k dog -i image.jpg -vv
+
+# Save cropped target boxes (for unverified images containing target objects)
+python verify-image-yolo.py -k cow -d data_raw/Cattle --save-boxes --min-box-size 250 --move-unverified -vv
+```
+
+### Command-line arguments
+
+- `-k`, `--keyword`: Target object category (required). Must be one of:
+  cat, dog, bird, horse, sheep, cow, elephant, bear, zebra, giraffe, teddy bear
+- `-i`, `--images`: One or more image files to verify
+- `-d`, `--directory`: Directory containing images to verify
+- `-f`, `--file-list`: Text file with image paths (one per line)
+- `--move-unverified`: Move images that fail verification to `_UNVERIFIED`
+  subfolder
+- `--dry-run`: Preview what would be moved without actually moving files
+- `--model`: YOLO model to use (default: yolov8n.pt). Options: yolov8n.pt,
+  yolov8s.pt, yolov8m.pt, yolov8l.pt, yolov8x.pt
+- `--confidence`: Minimum confidence threshold (0-1, default: 0.5)
+- `-v`, `--verbosity`: Increase output verbosity
+  - `-v`: Show INFO level logs (verification progress)
+  - `-vv`: Show DEBUG level logs with detailed bounding box information for
+    each detection (class, confidence, coordinates, dimensions)
+- `--save-boxes`: When an image is unverified (contains other classes) but still
+  has target object detections meeting size/confidence thresholds, save cropped
+  target regions into a sibling `_BOXED` directory. Crops are named
+  `<original>-boxN.ext`.
+- `--min-box-size`: Minimum width OR height (in pixels) for a target box to be
+  saved when `--save-boxes` is used (default: 200).
+
+### Verification logic
+
+An image is considered verified if:
+
+1. At least one instance of the target category is detected with sufficient
+   confidence
+2. No other categories are detected (ensures image purity)
+
+An image fails verification if:
+
+- No target category is detected
+- Other object categories are present (e.g., image labeled "cat" contains a dog)
+
+### Output
+
+The tool provides:
+
+- Real-time progress as each image is verified
+- Detailed failure messages (what was detected instead)
+- Summary statistics at the end
+- Exit code 0 if all verified, 1 if any failed
+
+### YOLO verifier notes
+
+- The tool uses COCO dataset categories (80 classes)
+- Larger models (yolov8m.pt, yolov8l.pt) provide better accuracy but are slower
+- The `_UNVERIFIED` folder is created in the same directory as the images
+- Use `--dry-run` first to preview changes before actually moving files
+- Confidence threshold can be adjusted based on your quality requirements
+- When `--save-boxes` is used, only target detections with width OR height
+  >= `--min-box-size` and confidence >= `--confidence` are cropped. These
+  crops are stored in a `_BOXED` directory alongside the original image.
+
