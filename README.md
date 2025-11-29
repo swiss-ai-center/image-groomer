@@ -169,71 +169,6 @@ The main arguments are:
 - `--keep-filename`: Keep original filename (default is to use md5 hash of image content).
 - `--allow-gif`: Allow saving images with .gif extension (blocked by default).
 
-## Google Images Scraper
-
-A more recent bulk downloader that uses Selenium with headless Chrome to scrape
-Google Images search results. This provides an alternative to Bing when you need
-different image sources or better search quality for specific queries.
-
-### How Google scraper works
-
-1. Uses Selenium with headless Chrome to navigate Google Images search results
-2. Scrolls and clicks thumbnails to collect full-size image URLs
-3. Downloads images in parallel with the same deduplication and validation as
-   the Bing scraper
-4. Saves download history to avoid re-downloading images across sessions
-
-### Google scraper requirements
-
-This script requires additional dependencies:
-
-```sh
-pip install selenium
-# On macOS with Homebrew:
-brew install chromedriver
-# Or download chromedriver matching your Chrome version from:
-# https://chromedriver.chromium.org/downloads
-```
-
-### Google scraper usage
-
-```sh
-# Basic download
-python image-scraper-google.py -s "golden retriever" --limit 100 -o data_raw/dog
-
-# Multiple keywords from file
-python image-scraper-google.py -f keywords.txt --limit 200 --threads 10
-
-# With file prefix and verbose output
-python image-scraper-google.py -s "siamese cat" -p cat -o data_raw/cat --limit 150 -v
-
-# Disable safe search
-python image-scraper-google.py -s "abstract art" --no-safe-search --limit 50
-```
-
-### Google scraper arguments
-
-- `-s`, `--search`: Search keyword/query.
-- `-f`, `--search-file`: File containing search queries line by line.
-- `-o`, `--output`: Output directory (default: ./download).
-- `-p`, `--file-prefix`: Prefix for downloaded filenames.
-- `--limit`: Maximum number of images to download per query (default 100).
-- `--threads`: Number of parallel download threads (default 20).
-- `--no-safe-search`: Disable safe search filtering.
-- `--keep-filename`: Keep original filename instead of using MD5 hash.
-- `--allow-gif`: Allow downloading GIF images (blocked by default).
-- `-v`, `--verbosity`: Increase verbosity (-v, -vv).
-
-### Notes
-
-- Google may rate-limit or block requests if you make too many searches too
-  quickly; use reasonable limits and consider adding delays between queries
-- Requires `chromedriver` to be installed and accessible in your PATH
-- The scraper uses headless Chrome, so it works without opening browser windows
-- Download history is saved to `google_download_history.pkl` to prevent
-  re-downloading images across sessions
-- Images are deduplicated using MD5 hashes, just like the Bing scraper
-
 ## Dataset Downloaders (Open Images v7 & COCO)
 
 Two scripts are provided to fetch curated, per-class image sets from popular
@@ -438,4 +373,3 @@ The tool provides:
 - When `--save-boxes` is used, only target detections with width OR height
   >= `--min-box-size` and confidence >= `--confidence` are cropped. These
   crops are stored in a `_BOXED` directory alongside the original image.
-
