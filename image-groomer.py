@@ -532,8 +532,10 @@ def make_train_validation_test_sets(filelist, outputdir: str,
                          .format(category, len(categories[category])))
     # create sub-dirs train, validate and test
     os.makedirs(outputdir + os.path.sep + 'train')
-    os.makedirs(outputdir + os.path.sep + 'validate')
-    os.makedirs(outputdir + os.path.sep + 'test')
+    if val_size > 0.0:
+        os.makedirs(outputdir + os.path.sep + 'validate')
+    if test_size > 0.0:
+        os.makedirs(outputdir + os.path.sep + 'test')
     # set the seed if needed
     if seed != -1:
         random.seed(seed)
@@ -614,6 +616,11 @@ if __name__ == "__main__":
                              'operation')
     parser.add_argument('-se', '--seed', type=int, default=-1,
                         help='seed value for random set generation')
+    parser.add_argument('--split', type=float, nargs=3,
+                        default=[0.8, 0.1, 0.1],
+                        metavar=('TRAIN', 'VAL', 'TEST'),
+                        help='train/validation/test split proportions '
+                             '(default: 0.8 0.1 0.1)')
     parser.add_argument('root_paths', metavar='PATHS', type=str, nargs='+',
                         help='root paths or files from which we grrrrooom')
     args = parser.parse_args()
@@ -685,6 +692,9 @@ if __name__ == "__main__":
     if args.mode == 'make_sets':
         make_train_validation_test_sets(filelist,
                                         args.outputdir,
+                                        train_size=args.split[0],
+                                        val_size=args.split[1],
+                                        test_size=args.split[2],
                                         nperclass=args.nperclass,
                                         seed=args.seed,
                                         verbosity=args.verbosity)

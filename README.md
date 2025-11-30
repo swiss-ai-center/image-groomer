@@ -67,7 +67,8 @@ the verbosity level of the application (no flags for minial logs, `-v` few logs,
   
 - **make_sets**: This mode takes source directory containing categories of images
   and split it into train, validation and test sets. The split preserves the
-  class balance. Default split sizes are, respectively, 80%, 10% and 10%.
+  class balance. Default split sizes are, respectively, 80%, 10% and 10%. You may
+  adjust these proportion with the option `--split 0.7 0.2 0.1`.
   Example source directory:
 
   ```text
